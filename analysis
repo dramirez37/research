@@ -1,0 +1,53 @@
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+maindata = pd.read_excel("/workspaces/research/Regression/Metrics Research Project Extracted Data (1).xlsx")
+maindata.columns = ['Taxes_Levied', 'Florida_Resident_Population', 'Florida_Housing_Price_Index', 'Mortgage_Rates']
+maindata = maindata.apply(pd.to_numeric)
+maindata['Taxes_Levied'] = maindata['Taxes_Levied'].astype(float)
+
+mean_mortgage_rate = np.mean(maindata['Mortgage_Rates'])
+std_mortgage_rate = np.std(maindata['Mortgage_Rates'])
+
+mean_housing_price_index = np.mean(maindata['Florida_Housing_Price_Index'])
+std_housing_price_index = np.std(maindata['Florida_Housing_Price_Index'])
+
+mean_population = np.mean(maindata['Florida_Resident_Population'])
+std_population = np.std(maindata['Florida_Resident_Population'])
+
+normalized_mortgage_rates = (maindata['Mortgage_Rates'] - mean_mortgage_rate) / std_mortgage_rate
+normalized_housing_price_index = (maindata['Florida_Housing_Price_Index'] - mean_housing_price_index) / std_housing_price_index
+normalized_population = (maindata['Florida_Resident_Population'] - mean_population) / std_population
+
+X = np.column_stack((np.ones(len(maindata)), normalized_mortgage_rates, normalized_housing_price_index, normalized_population))
+X_df = pd.DataFrame(X, columns=['Intercept', 'normalized_mortgage_rates', 'normalized_housing_price_index', 'normalized_population'])
+
+X_train = X_df
+y_train = maindata['Taxes_Levied']
+
+model = sm.OLS(endog=y_train, exog=X_train).fit(cov_type='HC3')
+
+results = model.summary()
+print(results)
+
+variables = ['normalized_mortgage_rates', 'normalized_housing_price_index', 'normalized_population']
+titles = [
+    'Scatter Plot of Normalized Mortgage Rates Against Normalized Taxes Levied',
+    'Scatter Plot of Normalized Florida Housing Price Index Against Normalized Taxes Levied',
+    'Scatter Plot of Normalized Florida Resident Population Against Normalized Taxes Levied'
+]
+
+for variable, title in zip(variables, titles):
+    plt.figure(figsize=(8, 6))
+
+    sns.scatterplot(x=X_train[variable], y=y_train)
+    
+    sns.regplot(x=X_train[variable], y=y_train, ci=None, line_kws={'color': 'red'})
+    
+    plt.title(title)
+    plt.xlabel(variable)
+    plt.ylabel('Taxes Levied')
+    plt.show()
